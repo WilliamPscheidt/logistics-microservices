@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Serviço do PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: keycloak_db       # Nome do banco de dados para o KeyCloak
+      POSTGRES_USER: keycloak_user   # Usuário do banco de dados
+      POSTGRES_PASSWORD: strong_password # Senha do banco de dados (recomenda-se alterar)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Serviço do RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: rabbitmq_server
+    environment:
+      RABBITMQ_DEFAULT_USER: guest # Usuário padrão
+      RABBITMQ_DEFAULT_PASS: guest # Senha padrão (recomenda-se alterar em produção)
+    ports:
+      - "5672:5672"   # Porta para comunicação com o RabbitMQ
+      - "15672:15672" # Porta para a interface de gerenciamento web
+    networks:
+      - app_network
+
+  # Serviço do KeyCloak
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: keycloak_auth
+    command: start-dev --import-realm
+    environment:
+      # Configuração do Banco de Dados (PostgreSQL)
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: strong_password
+
+      # Credenciais do administrador do KeyCloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_password # Senha do admin (recomenda-se alterar)
+
+      # Para facilitar o desenvolvimento em ambiente local (não use em produção)
+      KC_HTTP_ENABLED: 'true'
+      KC_HOSTNAME: localhost
+    ports:
+      - "8080:8080" # Porta de acesso ao KeyCloak
+    networks:
+      - app_network
+    depends_on:
+      postgres:
+        condition: service_healthy # Garante que o PostgreSQL esteja pronto antes de iniciar o KeyCloak
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app_network:
+    driver: bridge
