@@ -1,14 +1,13 @@
 version: '3.8'
 
 services:
-  # Serviço do PostgreSQL
   postgres:
     image: postgres:15-alpine
     container_name: postgres_db
     environment:
-      POSTGRES_DB: keycloak_db       # Nome do banco de dados para o KeyCloak
-      POSTGRES_USER: keycloak_user   # Usuário do banco de dados
-      POSTGRES_PASSWORD: strong_password # Senha do banco de dados (recomenda-se alterar)
+      POSTGRES_DB: keycloak_db       
+      POSTGRES_USER: keycloak_user   
+      POSTGRES_PASSWORD: strong_password 
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -26,40 +25,36 @@ services:
     image: rabbitmq:3.12-management-alpine
     container_name: rabbitmq_server
     environment:
-      RABBITMQ_DEFAULT_USER: guest # Usuário padrão
-      RABBITMQ_DEFAULT_PASS: guest # Senha padrão (recomenda-se alterar em produção)
+      RABBITMQ_DEFAULT_USER: guest 
+      RABBITMQ_DEFAULT_PASS: guest 
     ports:
-      - "5672:5672"   # Porta para comunicação com o RabbitMQ
-      - "15672:15672" # Porta para a interface de gerenciamento web
+      - "5672:5672"  
+      - "15672:15672"
     networks:
       - app_network
 
-  # Serviço do KeyCloak
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
     container_name: keycloak_auth
     command: start-dev --import-realm
     environment:
-      # Configuração do Banco de Dados (PostgreSQL)
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
       KC_DB_USERNAME: keycloak_user
       KC_DB_PASSWORD: strong_password
 
-      # Credenciais do administrador do KeyCloak
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin_password # Senha do admin (recomenda-se alterar)
+      KEYCLOAK_ADMIN_PASSWORD: admin_password
 
-      # Para facilitar o desenvolvimento em ambiente local (não use em produção)
       KC_HTTP_ENABLED: 'true'
       KC_HOSTNAME: localhost
     ports:
-      - "8080:8080" # Porta de acesso ao KeyCloak
+      - "8080:8080"
     networks:
       - app_network
     depends_on:
       postgres:
-        condition: service_healthy # Garante que o PostgreSQL esteja pronto antes de iniciar o KeyCloak
+        condition: service_healthy
 
 volumes:
   postgres_data:
